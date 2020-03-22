@@ -2,23 +2,23 @@ const asPromised = (block) => {
   return new Promise((resolve, reject) => {
     block((...results) => {
       if (chrome.runtime.lastError) {
-        reject(chrome.extension.lastError);
-      } else {
-        resolve(...results);
+        return reject(chrome.extension.lastError);
       }
+      return resolve(...results);
     });
   });
 };
 
 entGetInfo = function (item) {
   return asPromised((callback) => {
-    if ( typeof chrome.enterprise !== "undefined" ) {
-      if ( typeof chrome.enterprise.deviceAttributes !== "undefined" ) {
-        if ( typeof chrome.enterprise.deviceAttributes[item] !== "undefined" ) {
-          chrome.enterprise.deviceAttributes[item](callback);
-        } else { callback(undefined); }
-      } else { callback(undefined); }
-    } else { callback(undefined); }
+    if (typeof chrome.enterprise !== 'undefined' ) {
+      if ( typeof chrome.enterprise.deviceAttributes !== 'undefined' ) {
+        if ( typeof chrome.enterprise.deviceAttributes[item] !== 'undefined' ) {
+          return chrome.enterprise.deviceAttributes[item](callback);
+        }
+      }
+    }
+    return callback(undefined);
   });
 }
 
@@ -29,24 +29,14 @@ getIden = function () {
 }
 
 function get_data(callback) {
-  data = {};
-  data_needed = ['location', 'assetid', 'directoryid', 'useremail'];
-  mypromises = [ Promise.resolve(false),  // 0 location
-                 Promise.resolve(false),  // 1 asset id
-                 Promise.resolve(false),  // 2 directory api id
-                 Promise.resolve(false),  // 3 user email
-                ];
-  for (i = 0; i < data_needed.length; i++) {
-    if (data_needed[i] === 'location') {
-      mypromises[0] = entGetInfo('getDeviceAnnotatedLocation');
-    } else if (data_needed[i] === 'assetid') {
-      mypromises[1] = entGetInfo('getDeviceAssetId');
-    } else if (data_needed[i] === 'directoryid') {
-      mypromises[2] = entGetInfo('getDirectoryDeviceId');
-    } else if (data_needed[i] === 'useremail') {
-      mypromises[3] = getIden();
+  const data = {};
+  const data_needed = ['location', 'assetid', 'directoryid', 'useremail'];
+  const mypromises = data_needed.map((item) => {
+    if (item === 'useremail') {
+      return getIden()
     }
-  }
+    return entGetInfo(item)
+  })
   Promise.all(mypromises).then(function(values) {
     if (values[0]) {
       data.location = values[0].toLowerCase().split(',');
